@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Éditeur du site · Anne Le Chevallier</title>
+<script src="assets/reglages.js"></script>
+<script src="assets/appliquer-reglages.js"></script>
+<style>
+  :root {
+    --bg: #f4f2ee; --panel: #ffffff; --ink: #1f1c19; --soft: #6a625a; --line: #ddd6cb;
+    --accent: #b3362b; --ok: #2f7a4b; --warn: #a15c00;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
+  header.top h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  header.top .etat { font-size: 14px; color: var(--soft); }
+  header.top .etat.ok { color: var(--ok); }
+  .btn { font: inherit; border: 1px solid var(--ink); background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+  .btn.sec { background: #fff; color: var(--ink); }
+  .btn.danger { background: #fff; color: var(--accent); border-color: var(--accent); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  nav.onglets { display: flex; gap: 4px; padding: 0 20px; background: var(--panel); border-bottom: 1px solid var(--line); overflow-x: auto; }
+  nav.onglets button { font: inherit; border: 0; background: none; padding: 12px 14px; cursor: pointer; border-bottom: 3px solid transparent; color: var(--soft); white-space: nowrap; }
+  nav.onglets button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+  main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+  section.onglet[hidden] { display: none; }
+  .grille { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .grille { grid-template-columns: 1fr; } }
+  .carte { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .carte h2 { font-size: 16px; margin: 0 0 12px; }
+  .aide { color: var(--soft); font-size: 14px; margin: 0 0 12px; }
+  label.champ { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid #eee8de; }
+  label.champ:last-of-type { border-bottom: 0; }
+  input[type="color"] { width: 44px; height: 30px; border: 1px solid var(--line); border-radius: 6px; padding: 2px; background: #fff; }
+  select { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; max-width: 100%; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .palettes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .palettes button { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 4px 10px 4px 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 13px; }
+  .palettes i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+
+  /* oiseau */
+  .scene { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #ccc center / contain no-repeat; border-radius: 8px; overflow: hidden; cursor: crosshair; user-select: none; touch-action: none; }
+  .scene .mini-oiseau { position: absolute; width: calc(76px * var(--o-taille, 1)); transform: translate(-50%, -100%); pointer-events: none; filter: drop-shadow(0 3px 4px rgba(0,0,0,.3)); }
+  .scene .repere { position: absolute; width: 10px; height: 10px; border: 2px solid #fff; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 1px rgba(0,0,0,.4); pointer-events: none; }
+  .o-c-corps { fill: var(--o-corps); } .o-c-gorge { fill: var(--o-gorge); } .o-c-aile { fill: var(--o-aile); }
+  .o-c-rayure { stroke: var(--o-rayure); } .o-c-bec { fill: var(--o-bec); } .o-c-pattes { stroke: var(--o-pattes); }
+
+  /* typographie */
+  .apercu { border: 1px solid var(--line); border-radius: 8px; padding: 24px; background: #fbfaf7; }
+  .apercu .t1 { font-family: var(--ap-titres); font-size: 48px; line-height: 1.05; margin: 0 0 6px; }
+  .apercu .t1 i { font-style: italic; }
+  .apercu .t2 { font-family: var(--ap-titres); font-size: 26px; font-style: italic; margin: 18px 0 4px; }
+  .apercu .meta { font-family: var(--ap-texte); font-size: 13px; color: var(--soft); }
+  .apercu p { font-family: var(--ap-titres); font-size: 19px; line-height: 1.55; }
+  .apercu .nav { font-family: var(--ap-texte); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; display: flex; gap: 18px; margin-bottom: 18px; }
+  .duos { display: grid; gap: 8px; }
+  .duos button { text-align: left; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+  .duos button b { display: block; font-size: 20px; font-weight: 500; }
+  .duos button span { font-size: 13px; color: var(--soft); }
+
+  /* pages */
+  .barre-page { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .barre-taille { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 12px; padding: 8px 12px; background: #fff; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; }
+  .barre-taille .btn { padding: 4px 10px; }
+  .barre-taille .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+  .barre-taille .groupe { display: inline-flex; gap: 2px; }
+  .btn.ico { padding: 4px 7px; display: inline-grid; place-items: center; }
+  .btn.ico svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; }
+  .btn.on { background: var(--ink); color: #fff; }
+  #outils-bloc, #outils-photo { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  #outils-bloc[hidden], #outils-photo[hidden] { display: none; }
+  .barre-ajout { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 14px; }
+  .barre-ajout small { color: var(--soft); }
+  .barre-taille output { min-width: 52px; text-align: center; font-variant-numeric: tabular-nums; }
+  output { font-size: 13px; color: var(--soft); font-variant-numeric: tabular-nums; }
+  .apercu .t1 { font-size: calc(48px * var(--ap-st, 1)) !important; } .apercu .t2 { font-size: calc(26px * var(--ap-st, 1)) !important; }
+  .apercu p { font-size: calc(19px * var(--ap-sx, 1)) !important; } .apercu .meta { font-size: calc(13px * var(--ap-sx, 1)) !important; }
+  .apercu .nav { font-size: calc(13px * var(--ap-sx, 1)) !important; }
+  .cadre { width: 100%; height: calc(100vh - 200px); min-height: 480px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  .modif { font-size: 14px; color: var(--warn); }
+  .msg { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 50; max-width: calc(100vw - 32px); }
+  .msg.vu { opacity: 1; }
+  .bloque { padding: 40px 20px; text-align: center; color: var(--soft); }
+  kbd { background: #eee; border-radius: 4px; padding: 0 5px; font-size: 13px; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Éditeur du site</h1>
+  <button class="btn" id="ouvrir">Ouvrir le dossier du site</button>
+  <span class="etat" id="etat">Aucun dossier ouvert : les modifications ne peuvent pas encore être enregistrées.</span>
+</header>
+<nav class="onglets" role="tablist">
+  <button role="tab" aria-selected="true" data-onglet="pages">Textes et images</button>
+  <button role="tab" aria-selected="false" data-onglet="oiseau">Oiseau et portrait</button>
+  <button role="tab" aria-selected="false" data-onglet="polices">Typographie</button>
+</nav>
+
+<main>
+  <!-- ============ PAGES ============ -->
+  <section class="onglet" id="onglet-pages">
+    <div class="barre-page">
+      <label>Page :
+        <select id="choix-page"></select>
+      </label>
+      <button class="btn" id="enregistrer-page" disabled>Enregistrer la page</button>
+      <button class="btn sec" id="annuler-page" disabled>Annuler les modifications</button>
+      <span class="modif" id="modif-page" hidden>Modifications non enregistrées</span>
+    </div>
+    <div class="barre-taille" id="barre-taille" hidden>
+      <span>Texte sélectionné — taille :</span>
+      <button class="btn sec" type="button" id="taille-moins" aria-label="Réduire">A−</button>
+      <output id="taille-val">100 %</output>
+      <button class="btn sec" type="button" id="taille-plus" aria-label="Agrandir">A+</button>
+      <button class="btn sec" type="button" id="taille-reset">Taille normale</button>
+      <span style="margin-left:12px">Police :</span>
+      <select id="police-el" aria-label="Police du texte sélectionné"><option value="">Par défaut</option></select>
+      <span class="sep"></span>
+      <span>Alignement :</span>
+      <span class="groupe" role="group" aria-label="Alignement du texte">
+        <button class="btn sec ico" type="button" data-align="left" title="Aligner à gauche" aria-label="Aligner à gauche"><svg viewBox="0 0 16 16"><path d="M2 3h12M2 6.5h8M2 10h12M2 13.5h8"/></svg></button>
+        <button class="btn sec ico" type="button" data-align="center" title="Centrer" aria-label="Centrer"><svg viewBox="0 0 16 16"><path d="M2 3h12M4 6.5h8M2 10h12M4 13.5h8"/></svg></button>
+        <button class="btn sec ico" type="button" data-align="right" title="Aligner à droite" aria-label="Aligner à droite"><svg viewBox="0 0 16 16"><path d="M2 3h12M6 6.5h8M2 10h12M6 13.5h8"/></svg></button>
+        <button class="btn sec ico" type="button" data-align="justify" title="Justifier" aria-label="Justifier"><svg viewBox="0 0 16 16"><path d="M2 3h12M2 6.5h12M2 10h12M2 13.5h12"/></svg></button>
+      </span>
+      <button class="btn sec" type="button" data-align="">Alignement d'origine</button>
+      <span class="sep"></span>
+      <button class="btn danger" type="button" id="suppr-texte">Supprimer ce texte</button>
+      <span id="outils-bloc" hidden>
+        <span class="sep"></span>
+        <span>Bloc :</span>
+        <button class="btn sec" type="button" id="bloc-haut">↑ Monter</button>
+        <button class="btn sec" type="button" id="bloc-bas">↓ Descendre</button>
+        <span id="outils-photo" hidden>
+          <span>Largeur de la photo :</span>
+          <button class="btn sec" type="button" data-largeur="s">Petite</button>
+          <button class="btn sec" type="button" data-largeur="m">Moyenne</button>
+          <button class="btn sec" type="button" data-largeur="l">Grande</button>
+        </span>
+        <button class="btn danger" type="button" id="bloc-suppr">Supprimer le bloc</button>
+      </span>
+    </div>
+    <div class="barre-ajout" id="barre-ajout" hidden>
+      <span>Ajouter un emplacement <small>(après le texte sélectionné, sinon en bas de la page)</small> :</span>
+      <button class="btn sec" type="button" id="ajout-texte">+ Texte</button>
+      <button class="btn sec" type="button" id="ajout-photo">+ Photo</button>
+      <button class="btn sec" type="button" id="ajout-mixte">+ Photo et texte</button>
+    </div>
+    <p class="aide">Cliquez sur un texte pour le modifier : la barre ci-dessus permet de changer sa taille, sa police et son alignement, ou de le supprimer. Cliquez sur une image pour la remplacer. Sur les pages de galerie, survolez une œuvre pour la supprimer ou ajoutez-en une avec le bouton en bas de la galerie. La fenêtre du portrait (accueil) est affichée en bas de la page d'accueil pour pouvoir la modifier.</p>
+    <div id="zone-page"><div class="bloque">Ouvrez d'abord le dossier du site (bouton en haut).</div></div>
+  </section>
+
+  <!-- ============ OISEAU ============ -->
+  <section class="onglet" id="onglet-oiseau" hidden>
+    <div class="grille">
+      <div class="carte">
+        <h2>Emplacement</h2>
+        <p class="aide">Cliquez (ou faites glisser) sur la photo à l'endroit où l'oiseau doit poser ses pattes.</p>
+        <div class="scene" id="scene">
+          <svg class="mini-oiseau" id="mini-oiseau" viewBox="0 0 100 80" aria-hidden="true">
+            <path class="o-c-corps" d="M62 50 L93 39 L95 47 L66 58 Z"/>
+            <path class="o-c-corps" d="M30 44 C30 30 48 26 60 34 C70 40 70 56 58 62 C46 68 30 60 30 44 Z"/>
+            <path class="o-c-gorge" d="M30 46 C32 60 44 66 54 63 C44 60 36 54 34 44 Z"/>
+            <circle class="o-c-corps" cx="32" cy="32" r="12"/>
+            <path class="o-c-bec" d="M21 30.5 L10 33.5 L21 36 Z"/>
+            <circle cx="28" cy="29" r="2.6" fill="#fff"/><circle cx="27.4" cy="29" r="1.4" fill="#111"/>
+            <g class="o-c-pattes" stroke-width="2.2" stroke-linecap="round" fill="none"><path d="M46 63 L44 76 M40 77 L49 77"/><path d="M54 63 L56 76 M52 77 L61 77"/></g>
+            <path class="o-c-aile" d="M43 40 C53 32 70 36 78 50 C67 53 54 53 43 46 Z"/>
+            <path class="o-c-rayure" d="M52 41 C60 41 68 44 73 49" stroke-width="2" fill="none" stroke-linecap="round"/>
+          </svg>
+          <span class="repere" id="repere"></span>
+        </div>
+        <p class="aide" style="margin-top:10px">Sur téléphone, la photo est recadrée sur les côtés : gardez l'oiseau plutôt vers le centre pour qu'il reste visible.</p>
+      </div>
+      <div class="carte">
+        <h2>Apparence</h2>
+        <label class="champ">Afficher l'oiseau <input type="checkbox" id="o-actif"></label>
+        <label class="champ">Taille <input type="range" id="o-taille" min="0.6" max="1.8" step="0.05"></label>
+        <label class="champ">Corps et tête <input type="color" data-couleur="corps"></label>
+        <label class="champ">Gorge <input type="color" data-couleur="gorge"></label>
+        <label class="champ">Aile <input type="color" data-couleur="aile"></label>
+        <label class="champ">Trait de l'aile <input type="color" data-couleur="rayure"></label>
+        <label class="champ">Bec <input type="color" data-couleur="bec"></label>
+        <label class="champ">Pattes <input type="color" data-couleur="pattes"></label>
+        <p class="aide" style="margin:14px 0 0">Palettes toutes prêtes :</p>
+        <div class="palettes" id="palettes"></div>
+        <h2 style="margin-top:22px">Fenêtre du portrait</h2>
+        <p class="aide">Taille de la fenêtre qui s'ouvre quand on clique sur l'oiseau (le portrait n'est jamais recadré).</p>
+        <label class="champ">Taille <span><input type="range" id="pa-taille" min="0.5" max="1" step="0.05"> <output id="pa-taille-v"></output></span></label>
+        <div class="actions">
+          <button class="btn" id="enregistrer-oiseau" disabled>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ POLICES ============ -->
+  <section class="onglet" id="onglet-polices" hidden>
+    <div class="grille">
+      <div class="carte">
+        <h2>Aperçu</h2>
+        <div class="apercu">
+          <div class="nav"><span>Accueil</span><span>Peintures</span><span>Vitraux</span><span>Parcours</span></div>
+          <div class="t1"><i>Anne</i><br>Le Chevallier</div>
+          <div class="t2">Lointains</div>
+          <div class="meta">At 287 · 65 × 54 cm · 2006</div>
+          <p>Loin d'une peinture conceptuelle, est-ce hasard ou empirisme ? La toile est là. Chaque touche en appelle une autre, jusqu'à ce que quelque chose se passe.</p>
+        </div>
+      </div>
+      <div class="carte">
+        <h2>Polices</h2>
+        <label class="champ">Titres et citations <select id="p-titres"></select></label>
+        <label class="champ">Menus et légendes <select id="p-texte"></select></label>
+        <label class="champ">Taille des titres <span><input type="range" id="t-titres" min="0.7" max="1.5" step="0.05"> <output id="t-titres-v"></output></span></label>
+        <label class="champ">Taille du texte <span><input type="range" id="t-texte" min="0.8" max="1.4" step="0.05"> <output id="t-texte-v"></output></span></label>
+        <p class="aide" style="margin:14px 0 6px">Associations conseillées :</p>
+        <div class="duos" id="duos"></div>
+        <div class="actions">
+          <button class="btn" id="enregistrer-polices" disabled>Enregistrer la typographie</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+<div class="msg" id="msg" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+  var PAGES = [
+    ["index.html", "Accueil"],
+    ["peintures/index.html", "Peintures – sommaire"],
+    ["peintures/2001.html", "Peintures 2001"], ["peintures/2006.html", "Peintures 2006"],
+    ["peintures/2007.html", "Peintures 2007"], ["peintures/2008.html", "Peintures 2008"],
+    ["peintures/2009.html", "Peintures 2009"], ["peintures/2010.html", "Peintures 2010"],
+    ["peintures/2011.html", "Peintures 2011"], ["peintures/2012.html", "Peintures 2012"],
+    ["peintures/2013.html", "Peintures 2013"], ["peintures/2014.html", "Peintures 2014"],
+    ["peintures/2015.html", "Peintures 2015"], ["peintures/2016.html", "Peintures 2016"],
+    ["peintures/2017.html", "Peintures 2017"], ["peintures/2018.html", "Peintures 2018"],
+    ["peintures/2019.html", "Peintures 2019"], ["peintures/2020.html", "Peintures 2020"],
+    ["peintures/2021.html", "Peintures 2021"], ["peintures/2022.html", "Peintures 2022"],
+    ["peintures/2023.html", "Peintures 2023"], ["peintures/2024.html", "Peintures 2024"],
+    ["vitraux.html", "Vitraux"], ["papier.html", "Œuvres sur papier"], ["parcours.html", "Parcours"]
+  ];
+  var DEFAUT = JSON.parse(JSON.stringify(window.REGLAGES));
+  var R = JSON.parse(JSON.stringify(window.REGLAGES));
+  R.tailles = R.tailles || { titres: 1, texte: 1 };
+  R.portrait = R.portrait || { taille: 1 };
+  var dossier = null;
+  var $ = function (s) { return document.querySelector(s); };
+
+  function message(t) {
+    var m = $("#msg"); m.textContent = t; m.classList.add("vu");
+    clearTimeout(message.t); message.t = setTimeout(function () { m.classList.remove("vu"); }, 3200);
+  }
+
+  // ---------- onglets ----------
+  document.querySelectorAll("nav.onglets button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.querySelectorAll("nav.onglets button").forEach(function (x) { x.setAttribute("aria-selected", x === b); });
+      document.querySelectorAll("section.onglet").forEach(function (s) { s.hidden = s.id !== "onglet-" + b.dataset.onglet; });
+    });
+  });
+
+  // ---------- dossier ----------
+  async function fichier(chemin, creer) {
+    var parts = chemin.split("/"), d = dossier;
+    for (var i = 0; i < parts.length - 1; i++) d = await d.getDirectoryHandle(parts[i], { create: !!creer });
+    return d.getFileHandle(parts[parts.length - 1], { create: !!creer });
+  }
+  async function lire(chemin) { return (await (await fichier(chemin)).getFile()).text(); }
+  async function ecrire(chemin, contenu) {
+    var h = await fichier(chemin, true), w = await h.createWritable();
+    await w.write(contenu); await w.close();
+  }
+
+  $("#ouvrir").addEventListener("click", async function () {
+    if (!window.showDirectoryPicker) {
+      alert("Votre navigateur ne permet pas d'enregistrer dans un dossier. Ouvrez editeur.html avec Google Chrome ou Microsoft Edge.");
+      return;
+    }
+    try {
+      var d = await window.showDirectoryPicker({ mode: "readwrite" });
+      try { await d.getFileHandle("index.html"); } catch (e) {
+        alert("Ce dossier ne contient pas index.html. Choisissez le dossier du site (celui qui contient index.html et editeur.html).");
+        return;
+      }
+      dossier = d;
+      $("#etat").textContent = "Dossier ouvert : " + d.name + ". Les modifications seront enregistrées dedans.";
+      $("#etat").classList.add("ok");
+      ["#enregistrer-oiseau", "#enregistrer-polices"].forEach(function (s) { $(s).disabled = false; });
+      try {   // photo d'accueil actuelle pour l'onglet Oiseau
+        var html = await lire("index.html");
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        var img = doc.querySelector(".hero img");
+        if (img) definirScene(img.getAttribute("src"));
+      } catch (e) {}
+      chargerPage();
+    } catch (e) { if (e.name !== "AbortError") alert("Impossible d'ouvrir ce dossier : " + e.message); }
+  });
+
+  async function enregistrerReglages() {
+    if (!dossier) { message("Ouvrez d'abord le dossier du site."); return; }
+    var txt = "/* Réglages du site — ce fichier est réécrit par l'éditeur (editeur.html). */\nwindow.REGLAGES = " +
+      JSON.stringify(R, null, 2) + ";\n";
+    await ecrire("assets/reglages.js", txt);
+    message("Réglages enregistrés. Rechargez le site pour voir le résultat.");
+  }
+
+  // ---------- OISEAU ----------
+  var scene = $("#scene"), mini = $("#mini-oiseau"), repere = $("#repere");
+  var natW = 5312, natH = 2988;
+  function definirScene(src) {
+    var im = new Image();
+    im.onload = function () { natW = im.naturalWidth; natH = im.naturalHeight; scene.style.aspectRatio = natW + " / " + natH; placerMini(); };
+    im.src = src;
+    scene.style.backgroundImage = 'url("' + src.replace(/"/g, "%22") + '")';
+  }
+  definirScene("images/site/atelier.jpg");
+  function placerMini() {
+    var o = R.oiseau;
+    mini.style.left = repere.style.left = (o.x * 100) + "%";
+    mini.style.top = repere.style.top = (o.y * 100) + "%";
+    mini.style.display = repere.style.display = o.actif === false ? "none" : "";
+  }
+  function couleursEditeur() {
+    var o = R.oiseau, root = document.documentElement;
+    Object.keys(o.couleurs).forEach(function (k) { root.style.setProperty("--o-" + k, o.couleurs[k]); });
+    root.style.setProperty("--o-taille", o.taille || 1);
+  }
+  function remplirOiseau() {
+    var o = R.oiseau;
+    $("#o-actif").checked = o.actif !== false;
+    $("#o-taille").value = o.taille || 1;
+    document.querySelectorAll("[data-couleur]").forEach(function (i) { i.value = o.couleurs[i.dataset.couleur]; });
+    couleursEditeur(); placerMini();
+  }
+  var glisse = false;
+  function poserA(e) {
+    var r = scene.getBoundingClientRect();
+    R.oiseau.x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    R.oiseau.y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+    R.oiseau.x = Math.round(R.oiseau.x * 1000) / 1000; R.oiseau.y = Math.round(R.oiseau.y * 1000) / 1000;
+    placerMini();
+  }
+  scene.addEventListener("pointerdown", function (e) { glisse = true; scene.setPointerCapture(e.pointerId); poserA(e); });
+  scene.addEventListener("pointermove", function (e) { if (glisse) poserA(e); });
+  scene.addEventListener("pointerup", function () { glisse = false; });
+  $("#o-actif").addEventListener("change", function (e) { R.oiseau.actif = e.target.checked; placerMini(); });
+  $("#o-taille").addEventListener("input", function (e) { R.oiseau.taille = parseFloat(e.target.value); couleursEditeur(); });
+  document.querySelectorAll("[data-couleur]").forEach(function (i) {
+    i.addEventListener("input", function () { R.oiseau.couleurs[i.dataset.couleur] = i.value; couleursEditeur(); });
+  });
+  var PALETTES = {
+    "D'origine (rouge-gorge)": DEFAUT.oiseau.couleurs,
+    "Mésange bleue": { corps: "#2f5f8a", gorge: "#f1cf3b", aile: "#6fa8d6", rayure: "#ffffff", bec: "#3a332c", pattes: "#5b6b7a" },
+    "Moineau": { corps: "#7a5a3c", gorge: "#d8c3a2", aile: "#5a3e27", rayure: "#efe3cf", bec: "#3b2f25", pattes: "#a07a55" },
+    "Oiseau vitrail": { corps: "#1f3f78", gorge: "#d8392b", aile: "#2f9b6a", rayure: "#f3c623", bec: "#f3c623", pattes: "#1f1c19" },
+    "Merle": { corps: "#151515", gorge: "#2a2a2a", aile: "#262626", rayure: "#4a4a4a", bec: "#f0a21b", pattes: "#3d3328" }
+  };
+  Object.keys(PALETTES).forEach(function (nom) {
+    var p = PALETTES[nom], b = document.createElement("button");
+    b.type = "button";
+    b.innerHTML = '<i style="background:' + p.corps + '"></i><i style="background:' + p.gorge + '"></i><i style="background:' + p.aile + '"></i>' + nom;
+    b.addEventListener("click", function () { R.oiseau.couleurs = JSON.parse(JSON.stringify(p)); remplirOiseau(); });
+    $("#palettes").appendChild(b);
+  });
+  function majPortrait() {
+    $("#pa-taille").value = R.portrait.taille;
+    $("#pa-taille-v").textContent = Math.round(R.portrait.taille * 100) + " %";
+  }
+  $("#pa-taille").addEventListener("input", function (e) { R.portrait.taille = parseFloat(e.target.value); majPortrait(); });
+  majPortrait();
+  $("#enregistrer-oiseau").addEventListener("click", enregistrerReglages);
+  remplirOiseau();
+
+  // ---------- POLICES ----------
+  var TITRES = ["Cormorant Garamond", "Playfair Display", "EB Garamond", "Fraunces", "Libre Baskerville", "Lora", "DM Serif Display", "Marcellus", "Josefin Sans", "Raleway", "Montserrat"];
+  var TEXTES = ["Karla", "Source Sans 3", "Lato", "Work Sans", "Nunito Sans", "DM Sans", "Mulish", "Open Sans", "Montserrat", "Raleway"];
+  var DUOS = [
+    ["Cormorant Garamond", "Karla", "Élégant et léger (actuel)"],
+    ["Playfair Display", "Source Sans 3", "Classique, contrasté"],
+    ["EB Garamond", "Lato", "Livre d'art"],
+    ["Fraunces", "Work Sans", "Chaleureux, moderne"],
+    ["Libre Baskerville", "Nunito Sans", "Sobre et lisible"],
+    ["Marcellus", "Mulish", "Inspiré des inscriptions anciennes"],
+    ["Josefin Sans", "Open Sans", "Géométrique, contemporain"]
+  ];
+  function charge(nom) {   // charge une police Google pour l'aperçu
+    var id = "f-" + nom.replace(/ /g, "-");
+    if (document.getElementById(id)) return;
+    var a = (window.POLICES[nom] || {}).axes, l = document.createElement("link");
+    l.id = id; l.rel = "stylesheet";
+    l.href = "https://fonts.googleapis.com/css2?family=" + nom.replace(/ /g, "+") + (a ? ":" + a : "") + "&display=swap";
+    document.head.appendChild(l);
+  }
+  function pile(nom) { return '"' + nom + '", ' + ((window.POLICES[nom] || {}).type === "serif" ? "Georgia, serif" : "Arial, sans-serif"); }
+  function remplirListe(sel, liste) {
+    liste.forEach(function (n) { var o = document.createElement("option"); o.value = o.textContent = n; sel.appendChild(o); });
+  }
+  remplirListe($("#p-titres"), TITRES); remplirListe($("#p-texte"), TEXTES);
+  function apercu() {
+    var t = R.polices.titres, x = R.polices.texte;
+    charge(t); charge(x);
+    $("#p-titres").value = t; $("#p-texte").value = x;
+    document.documentElement.style.setProperty("--ap-titres", pile(t));
+    document.documentElement.style.setProperty("--ap-texte", pile(x));
+  }
+  $("#p-titres").addEventListener("change", function (e) { R.polices.titres = e.target.value; apercu(); });
+  $("#p-texte").addEventListener("change", function (e) { R.polices.texte = e.target.value; apercu(); });
+  DUOS.forEach(function (d) {
+    charge(d[0]); charge(d[1]);
+    var b = document.createElement("button"); b.type = "button";
+    b.innerHTML = '<b style="font-family:' + pile(d[0]).replace(/"/g, "'") + '">' + d[0] + '</b><span style="font-family:' + pile(d[1]).replace(/"/g, "'") + '">' + d[1] + " · " + d[2] + "</span>";
+    b.addEventListener("click", function () { R.polices.titres = d[0]; R.polices.texte = d[1]; apercu(); });
+    $("#duos").appendChild(b);
+  });
+  function tailles() {
+    $("#t-titres").value = R.tailles.titres; $("#t-texte").value = R.tailles.texte;
+    $("#t-titres-v").textContent = Math.round(R.tailles.titres * 100) + " %";
+    $("#t-texte-v").textContent = Math.round(R.tailles.texte * 100) + " %";
+    document.documentElement.style.setProperty("--ap-st", R.tailles.titres);
+    document.documentElement.style.setProperty("--ap-sx", R.tailles.texte);
+  }
+  $("#t-titres").addEventListener("input", function (e) { R.tailles.titres = parseFloat(e.target.value); tailles(); });
+  $("#t-texte").addEventListener("input", function (e) { R.tailles.texte = parseFloat(e.target.value); tailles(); });
+  tailles();
+  $("#enregistrer-polices").addEventListener("click", enregistrerReglages);
+  apercu();
+
+  // ---------- PAGES ----------
+  var choix = $("#choix-page"), zone = $("#zone-page"), cadre = null, cheminPage = null, modifie = false;
+  PAGES.forEach(function (p) { var o = document.createElement("option"); o.value = p[0]; o.textContent = p[1]; choix.appendChild(o); });
+  function marquer(v) {
+    modifie = v; $("#modif-page").hidden = !v;
+  }
+  choix.addEventListener("change", function () {
+    if (modifie && !confirm("Les modifications de cette page ne sont pas enregistrées. Changer de page quand même ?")) { choix.value = cheminPage; return; }
+    chargerPage();
+  });
+  $("#annuler-page").addEventListener("click", function () {
+    if (!modifie || confirm("Abandonner les modifications de cette page ?")) chargerPage();
+  });
+  window.addEventListener("beforeunload", function (e) { if (modifie) { e.preventDefault(); e.returnValue = ""; } });
+
+  var STYLE_EDITEUR =
+    "[contenteditable]{outline:1px dashed transparent;outline-offset:3px;border-radius:2px;cursor:text}" +
+    "[contenteditable]:hover{outline-color:#b3362b88}[contenteditable]:focus{outline:2px solid #b3362b}" +
+    "img.__ed-img{cursor:pointer}img.__ed-img:hover{outline:3px solid #b3362b;outline-offset:-3px}" +
+    ".pa[hidden]{display:block!important;position:relative!important;inset:auto!important;opacity:1!important;background:#efe9df!important;padding:40px 16px!important;backdrop-filter:none!important}" +
+    ".pa .pa-carte{transform:none!important;max-height:none!important;margin:0 auto}" +
+    ".pa::before{content:'Fenêtre du portrait (s\\'ouvre en cliquant sur l\\'oiseau)';display:block;text-align:center;font:600 14px system-ui;margin-bottom:12px;color:#6a625a}" +
+    ".g-item{position:relative}.__ed-suppr{position:absolute;top:8px;right:8px;z-index:3;display:none;background:#b3362b;color:#fff;border:0;border-radius:6px;padding:6px 10px;font:600 13px system-ui;cursor:pointer}" +
+    ".g-item:hover .__ed-suppr{display:block}" +
+    ".bloc-libre{outline:1px dashed #b3362b66;outline-offset:6px}" +
+    ".__ed-ajout{display:block;margin:0 auto 40px;background:#1f1c19;color:#fff;border:0;border-radius:8px;padding:12px 18px;font:600 15px system-ui;cursor:pointer}";
+
+  var EDITABLES = "h1,h2,h3,p,li>span,figcaption .t,figcaption .d,.sec-title,.sec-sub,.year-card .y,.year-card .n,.nav a,.brand span,.crumb a,.pager a,.hero-text p,.site-foot p,.timeline span,small,.statement-text p";
+
+  async function chargerPage() {
+    if (!dossier) return;
+    cheminPage = choix.value; marquer(false);
+    var html = await lire(cheminPage);
+    var doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("script").forEach(function (s) { s.setAttribute("data-ed-type", s.getAttribute("type") || ""); s.setAttribute("type", "text/x-editeur"); });
+    var base = doc.createElement("base"); base.id = "__ed-base"; base.href = new URL(cheminPage, location.href).href;
+    doc.head.insertBefore(base, doc.head.firstChild);
+    var st = doc.createElement("style"); st.id = "__ed-style"; st.textContent = STYLE_EDITEUR; doc.head.appendChild(st);
+    zone.innerHTML = "";
+    cadre = document.createElement("iframe"); cadre.className = "cadre"; cadre.title = "Aperçu modifiable de la page";
+    cadre.addEventListener("load", preparer);
+    zone.appendChild(cadre);
+    cadre.srcdoc = "<!doctype html>\n" + doc.documentElement.outerHTML;
+    $("#enregistrer-page").disabled = false; $("#annuler-page").disabled = false;
+  }
+
+  function prefixe() { return "../".repeat(cheminPage.split("/").length - 1); }
+
+  function choisirImage(rappel) {
+    var inp = document.createElement("input"); inp.type = "file"; inp.accept = "image/*";
+    inp.addEventListener("change", async function () {
+      var f = inp.files[0]; if (!f) return;
+      var nom = f.name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9.]+/g, "-");
+      nom = Date.now().toString(36) + "-" + nom;
+      try {
+        await ecrire("images/modifs/" + nom, f);
+        rappel(prefixe() + "images/modifs/" + nom);
+      } catch (e) { alert("Impossible d'enregistrer l'image : " + e.message); }
+    });
+    inp.click();
+  }
+
+  function rendreImage(img) {
+    if (img.closest(".oiseau")) return;
+    img.classList.add("__ed-img");
+    img.title = "Cliquer pour remplacer cette image";
+    img.addEventListener("click", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      choisirImage(function (src) {
+        img.setAttribute("src", src); img.removeAttribute("srcset");
+        img.removeAttribute("width"); img.removeAttribute("height");
+        var a = img.closest("a.lb"); if (a) a.setAttribute("href", src);
+        marquer(true); message("Image remplacée. Pensez à enregistrer la page.");
+      });
+    });
+  }
+
+  function boutonSupprimer(fig, d) {
+    var b = d.createElement("button"); b.type = "button"; b.className = "__ed-suppr"; b.textContent = "Supprimer";
+    b.addEventListener("click", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (confirm("Retirer cette œuvre de la page ? (L'image reste dans le dossier.)")) { fig.remove(); marquer(true); }
+    });
+    fig.appendChild(b);
+  }
+
+  function rendreEditable(el) {
+    if (el.closest("[contenteditable]") || el.closest(".oiseau") || el.querySelector("[contenteditable]")) return;
+    el.setAttribute("contenteditable", "true"); el.setAttribute("spellcheck", "true");
+  }
+
+  var TITRES_SEL = "h1,h1 *,h2,h3,.sec-title,.year-card .y,figcaption .t,.brand span,.kicker";
+  var actif = null;
+  function majBarre() {
+    $("#barre-taille").hidden = !actif;
+    if (actif) {
+      $("#taille-val").textContent = Math.round(parseFloat(actif.getAttribute("data-taille") || 1) * 100) + " %";
+      $("#police-el").value = actif.getAttribute("data-police") || "";
+      var al = actif.style.textAlign || "";
+      document.querySelectorAll(".groupe [data-align]").forEach(function (b) { b.classList.toggle("on", b.getAttribute("data-align") === al); });
+      var bloc = actif.closest(".bloc-libre");
+      $("#outils-bloc").hidden = !bloc;
+      $("#outils-photo").hidden = !(bloc && bloc.classList.contains("bloc-photo"));
+    }
+  }
+  Object.keys(window.POLICES).forEach(function (n) {
+    var o = document.createElement("option"); o.value = o.textContent = n; $("#police-el").appendChild(o);
+  });
+  $("#police-el").addEventListener("change", function (e) {
+    if (!actif) return;
+    var n = e.target.value;
+    if (n) { actif.setAttribute("data-police", n); actif.style.fontFamily = window.pileDePolice(n); }
+    else {
+      actif.removeAttribute("data-police"); actif.style.removeProperty("font-family");
+      if (!actif.getAttribute("style")) actif.removeAttribute("style");
+    }
+    window.chargerPolicesElements(actif.ownerDocument);
+    marquer(true);
+  });
+  function appliquerTaille(el, k) {
+    var w = el.ownerDocument.defaultView;
+    if (!el.hasAttribute("data-taille-base")) {
+      el.style.removeProperty("font-size");
+      var titre = el.matches(TITRES_SEL);
+      var f = titre ? R.tailles.titres : R.tailles.texte;
+      el.setAttribute("data-taille-base", (parseFloat(w.getComputedStyle(el).fontSize) / (f || 1)).toFixed(2));
+      el.setAttribute("data-taille-var", titre ? "--t-titres" : "--t-texte");
+    }
+    k = Math.round(Math.min(3, Math.max(0.4, k)) * 100) / 100;
+    if (k === 1) {
+      el.style.removeProperty("font-size");
+      ["data-taille", "data-taille-base", "data-taille-var"].forEach(function (a) { el.removeAttribute(a); });
+      if (!el.getAttribute("style")) el.removeAttribute("style");
+    } else {
+      el.setAttribute("data-taille", k);
+      el.style.fontSize = "calc(" + (parseFloat(el.getAttribute("data-taille-base")) * k).toFixed(2) + "px * var(" + el.getAttribute("data-taille-var") + ", 1))";
+    }
+    marquer(true); majBarre();
+  }
+  $("#taille-moins").addEventListener("click", function () { if (actif) appliquerTaille(actif, parseFloat(actif.getAttribute("data-taille") || 1) - 0.1); });
+  $("#taille-plus").addEventListener("click", function () { if (actif) appliquerTaille(actif, parseFloat(actif.getAttribute("data-taille") || 1) + 0.1); });
+  $("#taille-reset").addEventListener("click", function () { if (actif) appliquerTaille(actif, 1); });
+
+  // --- alignement
+  document.querySelectorAll("[data-align]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      if (!actif) return;
+      var v = b.getAttribute("data-align");
+      if (v) actif.style.textAlign = v; else actif.style.removeProperty("text-align");
+      if (!actif.getAttribute("style")) actif.removeAttribute("style");
+      marquer(true); majBarre();
+    });
+  });
+  // --- supprimer un texte
+  $("#suppr-texte").addEventListener("click", function () {
+    if (!actif) return;
+    if (!confirm("Supprimer ce texte de la page ?")) return;
+    var el = actif; actif = null; majBarre(); el.remove(); marquer(true);
+  });
+  // --- blocs ajoutés
+  function blocDe(el) { return el && el.closest(".bloc-libre"); }
+  $("#bloc-haut").addEventListener("click", function () {
+    var b = blocDe(actif); if (b && b.previousElementSibling) { b.parentNode.insertBefore(b, b.previousElementSibling); marquer(true); voir(b); }
+  });
+  $("#bloc-bas").addEventListener("click", function () {
+    var b = blocDe(actif); var n = b && b.nextElementSibling;
+    if (n && !n.matches("script")) { b.parentNode.insertBefore(n, b); marquer(true); voir(b); }
+  });
+  $("#bloc-suppr").addEventListener("click", function () {
+    var b = blocDe(actif); if (!b || !confirm("Supprimer ce bloc (texte et photo) ?")) return;
+    actif = null; majBarre(); b.remove(); marquer(true);
+  });
+  document.querySelectorAll("[data-largeur]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var b = blocDe(actif); if (!b) return;
+      b.classList.remove("taille-s", "taille-m", "taille-l"); b.classList.add("taille-" + btn.getAttribute("data-largeur"));
+      marquer(true); majBarre();
+    });
+  });
+  function voir(el) {   // fait défiler l'aperçu seulement (pas la page de l'éditeur)
+    var w = el.ownerDocument.defaultView;
+    w.scrollTo({ top: el.getBoundingClientRect().top + w.scrollY - 140, behavior: "smooth" });
+  }
+  var CONTENEURS = "main, .prose, .pa-texte, .cv, .press, .contact";
+  function inserer(bloc) {
+    var d = cadre.contentDocument, ref = actif, parent = null;
+    while (ref && ref.parentElement && !ref.parentElement.matches(CONTENEURS)) ref = ref.parentElement;
+    if (ref && ref.parentElement && ref.parentElement.matches(CONTENEURS)) { parent = ref.parentElement; parent.insertBefore(bloc, ref.nextSibling); }
+    else {
+      var main = d.querySelector("main"), pa = main.querySelector(".pa");
+      main.insertBefore(bloc, pa || main.querySelector("script") || null);
+    }
+    bloc.querySelectorAll("h2,p,figcaption").forEach(rendreEditable);
+    bloc.querySelectorAll("img").forEach(rendreImage);
+    voir(bloc);
+    var premier = bloc.querySelector("[contenteditable]"); if (premier) premier.focus();
+    marquer(true);
+  }
+  $("#ajout-texte").addEventListener("click", function () {
+    var d = cadre.contentDocument, b = d.createElement("section");
+    b.className = "bloc-libre bloc-texte";
+    b.innerHTML = "<h2>Nouveau titre</h2><p>Écrivez votre texte ici.</p>";
+    inserer(b);
+  });
+  $("#ajout-photo").addEventListener("click", function () {
+    choisirImage(function (src) {
+      var d = cadre.contentDocument, b = d.createElement("figure");
+      b.className = "bloc-libre bloc-photo taille-m";
+      b.innerHTML = '<img src="' + src + '" alt=""><figcaption>Légende de la photo</figcaption>';
+      inserer(b);
+    });
+  });
+  $("#ajout-mixte").addEventListener("click", function () {
+    choisirImage(function (src) {
+      var d = cadre.contentDocument, b = d.createElement("section");
+      b.className = "bloc-libre bloc-mixte";
+      b.innerHTML = '<img src="' + src + '" alt=""><div><h2>Nouveau titre</h2><p>Écrivez votre texte ici.</p></div>';
+      inserer(b);
+    });
+  });
+
+  function preparer() {
+    actif = null; majBarre();
+    $("#barre-ajout").hidden = false;
+    var d = cadre.contentDocument;
+    window.appliquerReglages(R, d);   // polices et couleurs choisies
+    window.chargerPolicesElements(d);
+    d.querySelectorAll(".contact .mail, .bloc-libre h2, .bloc-libre p, .bloc-libre figcaption").forEach(rendreEditable);
+    d.querySelectorAll(EDITABLES).forEach(rendreEditable);
+    d.querySelectorAll("img").forEach(rendreImage);
+    d.addEventListener("click", function (e) {   // pas de navigation pendant l'édition
+      var a = e.target.closest("a"); if (a) e.preventDefault();
+    }, true);
+    d.addEventListener("input", function () { marquer(true); });
+    d.addEventListener("focusin", function (e) {
+      var el = e.target.closest && e.target.closest("[contenteditable]");
+      if (el) { actif = el; majBarre(); }
+    });
+    d.addEventListener("keydown", function (e) {   // Entrée dans un titre = pas de saut de ligne
+      if (e.key === "Enter" && e.target.matches && e.target.matches("h1 span,h2,h3,.sec-title,.nav a,figcaption .t")) e.preventDefault();
+    });
+    var gal = d.querySelector(".gallery");
+    if (gal) {
+      gal.querySelectorAll(".g-item").forEach(function (f) { boutonSupprimer(f, d); });
+      var ajout = d.createElement("button"); ajout.type = "button"; ajout.className = "__ed-ajout"; ajout.textContent = "+ Ajouter une œuvre";
+      ajout.addEventListener("click", function () {
+        choisirImage(function (src) {
+          var fig = d.createElement("figure"); fig.className = "g-item";
+          fig.innerHTML = '<a class="lb" href="' + src + '" data-caption=""><img src="' + src + '" alt="" loading="lazy" decoding="async"></a>' +
+            '<figcaption><span class="t">Titre de l\'œuvre</span><span class="d">At 000 · 00 × 00 cm</span></figcaption>';
+          gal.appendChild(fig);
+          fig.querySelectorAll("figcaption span").forEach(rendreEditable);
+          rendreImage(fig.querySelector("img")); boutonSupprimer(fig, d);
+          voir(fig);
+          marquer(true); message("Œuvre ajoutée. Modifiez son titre, puis enregistrez la page.");
+        });
+      });
+      gal.insertAdjacentElement("afterend", ajout);
+    }
+  }
+
+  $("#enregistrer-page").addEventListener("click", async function () {
+    if (!cadre) return;
+    var d = cadre.contentDocument.documentElement.cloneNode(true);
+    ["#__ed-base", "#__ed-style", "#polices-site", "#polices-extra", ".__ed-suppr", ".__ed-ajout"].forEach(function (s) {
+      d.querySelectorAll(s).forEach(function (x) { x.remove(); });
+    });
+    d.removeAttribute("style");
+    d.querySelectorAll("[contenteditable]").forEach(function (x) { x.removeAttribute("contenteditable"); x.removeAttribute("spellcheck"); });
+    d.querySelectorAll(".__ed-img").forEach(function (x) {
+      x.classList.remove("__ed-img"); if (!x.className) x.removeAttribute("class"); x.removeAttribute("title");
+    });
+    d.querySelectorAll("script[data-ed-type]").forEach(function (s) {
+      var t = s.getAttribute("data-ed-type"); s.removeAttribute("data-ed-type");
+      if (t) s.setAttribute("type", t); else s.removeAttribute("type");
+    });
+    // adresse e-mail : le lien suit le texte affiché
+    d.querySelectorAll('a[href^="mailto:"]').forEach(function (a) {
+      var t = a.textContent.trim();
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) a.setAttribute("href", "mailto:" + t);
+    });
+    // légendes de la visionneuse et textes alternatifs à jour
+    d.querySelectorAll(".g-item").forEach(function (f) {
+      var t = f.querySelector("figcaption .t"), de = f.querySelector("figcaption .d"), a = f.querySelector("a.lb"), im = f.querySelector("img");
+      var tt = t ? t.textContent.trim() : "", dd = de ? de.textContent.trim() : "";
+      if (a) a.setAttribute("data-caption", [tt, dd].filter(Boolean).join(" — "));
+      if (im && tt && !im.getAttribute("alt")) im.setAttribute("alt", tt + " — œuvre d'Anne Le Chevallier");
+    });
+    try {
+      await ecrire(cheminPage, "<!doctype html>\n" + d.outerHTML + "\n");
+      marquer(false); message("Page enregistrée : " + cheminPage);
+    } catch (e) { alert("Échec de l'enregistrement : " + e.message); }
+  });
+})();
+</script>
+</body>
+</html>
